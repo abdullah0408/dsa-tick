@@ -1,0 +1,146 @@
+"use client";
+
+import { useState } from "react";
+import { AddBigTopicRow } from "./add-rows";
+import { DUMMY_DATA } from "./data";
+import { AlgoSheetHeader } from "./header";
+import { QuestionDialog } from "./question-dialog";
+import { TopicRow } from "./topic-row";
+import { Difficulty, HintFormat, Topic } from "./types";
+
+export function AlgoSheet() {
+  const [data, setData] = useState<Topic[]>(DUMMY_DATA);
+  const [dialogConfig, setDialogConfig] = useState<{
+    isOpen: boolean;
+    topicId: string | null;
+    subtopicId: string | null;
+  }>({ isOpen: false, topicId: null, subtopicId: null });
+
+  const handleAddTopic = (title: string) => {
+    setData((prev) => [
+      ...prev,
+      {
+        id: `t-${Date.now()}`,
+        title,
+        userId: "local",
+        questions: [],
+        subtopics: [],
+      },
+    ]);
+  };
+
+  const handleAddSubtopic = (topicId: string, title: string) => {
+    setData((prev) =>
+      prev.map((topic) =>
+        topic.id === topicId
+          ? {
+              ...topic,
+              subtopics: [
+                ...(topic.subtopics ?? []),
+                { id: `st-${Date.now()}`, title, topicId, questions: [] },
+              ],
+            }
+          : topic
+      )
+    );
+  };
+
+  const handleSaveQuestion = (questionData: {
+    title: string;
+    level: Difficulty;
+    link: string;
+    hint: string;
+    hintFormat: HintFormat;
+    codes: { language: string; code: string }[];
+  }) => {
+    const { topicId, subtopicId } = dialogConfig;
+    if (!topicId) return;
+
+    const newQuestion = {
+      id: `q-${Date.now()}`,
+      solvedCount: 0,
+      topicId,
+      subtopicId: subtopicId ?? null,
+      codes: questionData.codes.map((c, i) => ({
+        id: `c-${Date.now()}-${i}`,
+        questionId: `q-${Date.now()}`,
+        title: null,
+        ...c,
+      })),
+      hint: questionData.hint || null,
+      hintFormat: questionData.hint ? questionData.hintFormat : null,
+      title: questionData.title,
+      level: questionData.level,
+      link: questionData.link || null,
+    };
+
+    setData((prev) =>
+      prev.map((topic) => {
+        if (topic.id !== topicId) return topic;
+        if (subtopicId) {
+          return {
+            ...topic,
+            subtopics: topic.subtopics.map((st) =>
+              st.id === subtopicId
+                ? { ...st, questions: [...st.questions, newQuestion] }
+                : st
+            ),
+          };
+        }
+        return {
+          ...topic,
+          questions: [...(topic.questions ?? []), newQuestion],
+        };
+      })
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground pb-20">
+      <AlgoSheetHeader />
+
+      <main className="w-full mx-auto px-4 sm:px-8 py-8">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-foreground tracking-tight">
+            Curriculum Database
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Flat, list-based view of algorithms and data structures.
+          </p>
+        </div>
+
+        <div className="border border-border bg-card shadow-sm overflow-hidden flex flex-col">
+          {/* Table header */}
+          <div className="flex items-center px-4 py-2.5 bg-muted border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <div className="w-16 pl-4 shrink-0">Done</div>
+            <div className="flex-1 pr-4">Title</div>
+            <div className="w-20 shrink-0">Level</div>
+            <div className="w-32 shrink-0 text-right">Actions</div>
+          </div>
+
+          {/* Rows */}
+          <div className="flex flex-col">
+            {data.map((topic) => (
+              <TopicRow
+                key={topic.id}
+                topic={topic}
+                onAddSubtopic={handleAddSubtopic}
+                onOpenAddQuestion={(topicId, subtopicId) =>
+                  setDialogConfig({ isOpen: true, topicId, subtopicId })
+                }
+              />
+            ))}
+            <AddBigTopicRow onAdd={handleAddTopic} />
+          </div>
+        </div>
+      </main>
+
+      <QuestionDialog
+        key={`${dialogConfig.topicId}-${dialogConfig.subtopicId}-${dialogConfig.isOpen}`}
+        isOpen={dialogConfig.isOpen}
+        onClose={() => setDialogConfig((prev) => ({ ...prev, isOpen: false }))}
+        onSave={handleSaveQuestion}
+      />
+    </div>
+  );
+}

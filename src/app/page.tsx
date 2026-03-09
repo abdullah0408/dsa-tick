@@ -1,5 +1,5 @@
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AlgoSheet } from "@/components/algo-sheet";
 
 export default function Home() {
-  return <ThemeToggle />;
+  return <AlgoSheet />;
 }

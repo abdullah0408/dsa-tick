@@ -17,6 +17,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  topics        Topic[]
 
   @@unique([email])
   @@map("user")
@@ -68,4 +69,70 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Topic {
+  id    String @id @default(cuid())
+  title String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subtopics Subtopic[]
+  questions Question[]
+
+  createdAt DateTime @default(now())
+}
+
+model Subtopic {
+  id    String @id @default(cuid())
+  title String
+
+  topicId String
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  questions Question[]
+
+  createdAt DateTime @default(now())
+}
+
+model Question {
+  id          String  @id @default(cuid())
+  title       String
+  level       Level
+  link        String?
+  solvedCount Int     @default(0)
+
+  topicId String?
+  topic   Topic?  @relation(fields: [topicId], references: [id])
+
+  subtopicId String?
+  subtopic   Subtopic? @relation(fields: [subtopicId], references: [id])
+
+  hintFormat HintFormat?
+  hint       String?
+  codes      Code[]
+
+  createdAt DateTime @default(now())
+}
+
+enum Level {
+  Easy
+  Medium
+  Hard
+}
+
+enum HintFormat {
+  Text
+  Markdown
+}
+
+model Code {
+  id       String  @id @default(cuid())
+  title    String?
+  language String
+  code     String
+
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
