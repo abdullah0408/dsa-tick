@@ -65,6 +65,7 @@ interface QuestionRowProps {
   depth: 1 | 2;
   onEdit?: () => void;
   onUnderstandingChange?: (understanding: Understanding) => void;
+  onSolvedCountChange?: (solvedCount: number) => void;
 }
 
 export function QuestionRow({
@@ -72,6 +73,7 @@ export function QuestionRow({
   depth,
   onEdit,
   onUnderstandingChange,
+  onSolvedCountChange,
 }: QuestionRowProps) {
   const [solveCount, setSolveCount] = useState(question.solvedCount);
   const [solved, setSolved] = useState(question.solvedCount > 0);
@@ -115,8 +117,9 @@ export function QuestionRow({
             onClick={() => {
               const next = !solved;
               setSolved(next);
-              if (next && solveCount === 0) setSolveCount(1); // check + count was 0 → bump to 1
-              if (!next && solveCount === 1) setSolveCount(0); // uncheck + count was 1 → reset to 0
+              const nextCount = next ? (solveCount === 0 ? 1 : solveCount) : 0;
+              setSolveCount(nextCount);
+              onSolvedCountChange?.(nextCount);
             }}
             className={`w-4 h-4 border flex items-center justify-center transition-colors focus:outline-none ${
               solved
@@ -154,11 +157,10 @@ export function QuestionRow({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setSolveCount((c) => {
-                const next = Math.max(0, c - 1);
-                if (next === 0) setSolved(false);
-                return next;
-              });
+              const next = Math.max(0, solveCount - 1);
+              setSolveCount(next);
+              if (next === 0) setSolved(false);
+              onSolvedCountChange?.(next);
             }}
             className="size-6 flex items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
@@ -174,10 +176,10 @@ export function QuestionRow({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setSolveCount((c) => {
-                if (c === 0) setSolved(true);
-                return c + 1;
-              });
+              const next = solveCount + 1;
+              if (solveCount === 0) setSolved(true);
+              setSolveCount(next);
+              onSolvedCountChange?.(next);
             }}
             className="size-6 flex items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >

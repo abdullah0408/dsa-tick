@@ -15,6 +15,7 @@ interface TopicRowProps {
     questionId: string,
     understanding: Understanding
   ) => void;
+  onSolvedCountChange: (questionId: string, solvedCount: number) => void;
 }
 
 export function TopicRow({
@@ -23,6 +24,7 @@ export function TopicRow({
   onOpenAddQuestion,
   onEditQuestion,
   onUnderstandingChange,
+  onSolvedCountChange,
 }: TopicRowProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [addingSubtopic, setAddingSubtopic] = useState(false);
@@ -118,6 +120,7 @@ export function TopicRow({
               onOpenAddQuestion={onOpenAddQuestion}
               onEditQuestion={onEditQuestion}
               onUnderstandingChange={onUnderstandingChange}
+              onSolvedCountChange={onSolvedCountChange}
             />
           ))}
 
@@ -128,6 +131,7 @@ export function TopicRow({
               depth={1}
               onEdit={() => onEditQuestion(q)}
               onUnderstandingChange={(u) => onUnderstandingChange(q.id, u)}
+              onSolvedCountChange={(count) => onSolvedCountChange(q.id, count)}
             />
           ))}
         </div>

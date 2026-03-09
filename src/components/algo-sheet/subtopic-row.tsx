@@ -14,6 +14,7 @@ interface SubtopicRowProps {
     questionId: string,
     understanding: Understanding
   ) => void;
+  onSolvedCountChange: (questionId: string, solvedCount: number) => void;
 }
 
 export function SubtopicRow({
@@ -22,6 +23,7 @@ export function SubtopicRow({
   onOpenAddQuestion,
   onEditQuestion,
   onUnderstandingChange,
+  onSolvedCountChange,
 }: SubtopicRowProps) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -69,6 +71,7 @@ export function SubtopicRow({
               depth={2}
               onEdit={() => onEditQuestion(q)}
               onUnderstandingChange={(u) => onUnderstandingChange(q.id, u)}
+              onSolvedCountChange={(count) => onSolvedCountChange(q.id, count)}
             />
           ))}
         </>

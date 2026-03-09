@@ -1,8 +1,13 @@
 "use client";
 
+import {
+  addQuestion,
+  addSubtopic,
+  addTopic,
+  updateQuestion,
+} from "@/app/actions/algo-sheet";
 import { useState } from "react";
 import { AddBigTopicRow } from "./add-rows";
-import { DUMMY_DATA } from "./data";
 import { AlgoSheetHeader } from "./header";
 import { QuestionDialog } from "./question-dialog";
 import { TopicRow } from "./topic-row";
@@ -14,8 +19,8 @@ import {
   Understanding,
 } from "./types";
 
-export function AlgoSheet() {
-  const [data, setData] = useState<Topic[]>(DUMMY_DATA);
+export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
+  const [data, setData] = useState<Topic[]>(initialData);
   const [dialogConfig, setDialogConfig] = useState<{
     isOpen: boolean;
     topicId: string | null;
@@ -23,147 +28,192 @@ export function AlgoSheet() {
     editQuestion: Question | null;
   }>({ isOpen: false, topicId: null, subtopicId: null, editQuestion: null });
 
-  const handleAddTopic = (title: string) => {
+  const handleAddTopic = async (title: string) => {
+    const tempId = `temp-${Date.now()}`;
     setData((prev) => [
       ...prev,
-      {
-        id: `t-${Date.now()}`,
-        title,
-        userId: "local",
-        questions: [],
-        subtopics: [],
-      },
+      { id: tempId, title, userId: "abc", questions: [], subtopics: [] },
     ]);
+    try {
+      await addTopic(title);
+    } catch {
+      setData((prev) => prev.filter((t) => t.id !== tempId));
+    }
   };
 
-  const handleAddSubtopic = (topicId: string, title: string) => {
+  const handleAddSubtopic = async (topicId: string, title: string) => {
+    const tempId = `temp-${Date.now()}`;
     setData((prev) =>
-      prev.map((topic) =>
-        topic.id === topicId
+      prev.map((t) =>
+        t.id === topicId
           ? {
-              ...topic,
+              ...t,
               subtopics: [
-                ...(topic.subtopics ?? []),
-                { id: `st-${Date.now()}`, title, topicId, questions: [] },
+                ...t.subtopics,
+                { id: tempId, title, topicId, questions: [] },
               ],
             }
-          : topic
+          : t
       )
     );
+    try {
+      await addSubtopic(topicId, title);
+    } catch {
+      setData((prev) =>
+        prev.map((t) =>
+          t.id === topicId
+            ? { ...t, subtopics: t.subtopics.filter((st) => st.id !== tempId) }
+            : t
+        )
+      );
+    }
   };
 
-  const handleSaveQuestion = (questionData: {
+  type QuestionFormData = {
     title: string;
     level: Difficulty;
     link: string;
     hint: string;
     hintFormat: HintFormat;
     understanding: Understanding;
+    solvedCount: number;
     codes: { language: string; code: string }[];
-  }) => {
-    const { topicId, subtopicId, editQuestion } = dialogConfig;
+  };
 
-    // --- Edit existing ---
-    if (editQuestion) {
-      const updatedQuestion: Question = {
-        ...editQuestion,
-        title: questionData.title,
-        level: questionData.level,
-        link: questionData.link || null,
-        hint: questionData.hint || null,
-        hintFormat: questionData.hint ? questionData.hintFormat : null,
-        understanding: questionData.understanding,
-        codes: questionData.codes.map((c, i) => ({
-          id: editQuestion.codes[i]?.id ?? `c-${Date.now()}-${i}`,
-          questionId: editQuestion.id,
-          title: null,
-          ...c,
-        })),
-      };
-
-      const updateQuestion = (questions: Question[]) =>
-        questions.map((q) => (q.id === editQuestion.id ? updatedQuestion : q));
-
-      setData((prev) =>
-        prev.map((topic) => ({
-          ...topic,
-          questions: updateQuestion(topic.questions ?? []),
-          subtopics: topic.subtopics.map((st) => ({
-            ...st,
-            questions: updateQuestion(st.questions),
-          })),
-        }))
-      );
-      return;
+  const findQuestion = (id: string): Question | undefined => {
+    for (const t of data) {
+      const q =
+        (t.questions ?? []).find((q) => q.id === id) ??
+        t.subtopics.flatMap((st) => st.questions).find((q) => q.id === id);
+      if (q) return q;
     }
+  };
 
-    // --- Add new ---
+  const handleAddQuestion = async (questionData: QuestionFormData) => {
+    const { topicId, subtopicId } = dialogConfig;
     if (!topicId) return;
-    const newQuestion: Question = {
-      id: `q-${Date.now()}`,
+    const tempId = `temp-${Date.now()}`;
+    const tempQuestion: Question = {
+      id: tempId,
+      title: questionData.title,
+      level: questionData.level,
+      link: questionData.link || null,
+      hint: questionData.hint || null,
+      hintFormat: questionData.hint ? questionData.hintFormat : null,
+      understanding: questionData.understanding,
       solvedCount: 0,
       topicId,
       subtopicId: subtopicId ?? null,
       codes: questionData.codes.map((c, i) => ({
-        id: `c-${Date.now()}-${i}`,
-        questionId: `q-${Date.now()}`,
+        id: `temp-c-${i}`,
+        questionId: tempId,
         title: null,
         ...c,
       })),
-      hint: questionData.hint || null,
-      hintFormat: questionData.hint ? questionData.hintFormat : null,
-      understanding: questionData.understanding,
-      title: questionData.title,
-      level: questionData.level,
-      link: questionData.link || null,
     };
-
     setData((prev) =>
-      prev.map((topic) => {
-        if (topic.id !== topicId) return topic;
-        if (subtopicId) {
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        if (subtopicId)
           return {
-            ...topic,
-            subtopics: topic.subtopics.map((st) =>
+            ...t,
+            subtopics: t.subtopics.map((st) =>
               st.id === subtopicId
-                ? { ...st, questions: [...st.questions, newQuestion] }
+                ? { ...st, questions: [...st.questions, tempQuestion] }
                 : st
             ),
           };
-        }
-        return {
-          ...topic,
-          questions: [...(topic.questions ?? []), newQuestion],
-        };
+        return { ...t, questions: [...(t.questions ?? []), tempQuestion] };
       })
     );
+    try {
+      await addQuestion(topicId, subtopicId, questionData);
+    } catch {
+      setData((prev) =>
+        prev.map((t) => {
+          if (t.id !== topicId) return t;
+          if (subtopicId)
+            return {
+              ...t,
+              subtopics: t.subtopics.map((st) =>
+                st.id === subtopicId
+                  ? {
+                      ...st,
+                      questions: st.questions.filter((q) => q.id !== tempId),
+                    }
+                  : st
+              ),
+            };
+          return {
+            ...t,
+            questions: (t.questions ?? []).filter((q) => q.id !== tempId),
+          };
+        })
+      );
+    }
   };
 
-  const handleEditQuestion = (question: Question) => {
+  const handleUpdateQuestion = async (
+    questionId: string,
+    patch: Partial<QuestionFormData>
+  ) => {
+    const existing = findQuestion(questionId);
+    if (!existing) return;
+    const merged: QuestionFormData = {
+      title: existing.title,
+      level: existing.level,
+      link: existing.link ?? "",
+      hint: existing.hint ?? "",
+      hintFormat: existing.hintFormat ?? "Text",
+      understanding: existing.understanding ?? "None",
+      solvedCount: existing.solvedCount,
+      codes: existing.codes.map((c) => ({
+        language: c.language,
+        code: c.code,
+      })),
+      ...patch,
+    };
+    const optimistic: Question = {
+      ...existing,
+      ...merged,
+      solvedCount: merged.solvedCount,
+      link: merged.link || null,
+      hint: merged.hint || null,
+      hintFormat: merged.hint ? merged.hintFormat : null,
+      codes: merged.codes.map((c, i) => ({
+        id: existing.codes[i]?.id ?? `temp-c-${i}`,
+        questionId,
+        title: null,
+        ...c,
+      })),
+    };
+    const snapshot = data;
+    const replaceQ = (qs: Question[]) =>
+      qs.map((q) => (q.id === questionId ? optimistic : q));
+    setData((prev) =>
+      prev.map((t) => ({
+        ...t,
+        questions: replaceQ(t.questions ?? []),
+        subtopics: t.subtopics.map((st) => ({
+          ...st,
+          questions: replaceQ(st.questions),
+        })),
+      }))
+    );
+    try {
+      await updateQuestion(questionId, merged);
+    } catch {
+      setData(snapshot);
+    }
+  };
+
+  const handleOpenEditDialog = (question: Question) => {
     setDialogConfig({
       isOpen: true,
       topicId: question.topicId ?? null,
       subtopicId: question.subtopicId ?? null,
       editQuestion: question,
     });
-  };
-
-  const handleUnderstandingChange = (
-    questionId: string,
-    understanding: Understanding
-  ) => {
-    const update = (qs: Question[]) =>
-      qs.map((q) => (q.id === questionId ? { ...q, understanding } : q));
-    setData((prev) =>
-      prev.map((topic) => ({
-        ...topic,
-        questions: update(topic.questions ?? []),
-        subtopics: topic.subtopics.map((st) => ({
-          ...st,
-          questions: update(st.questions),
-        })),
-      }))
-    );
   };
 
   return (
@@ -206,8 +256,13 @@ export function AlgoSheet() {
                     editQuestion: null,
                   })
                 }
-                onEditQuestion={handleEditQuestion}
-                onUnderstandingChange={handleUnderstandingChange}
+                onEditQuestion={handleOpenEditDialog}
+                onUnderstandingChange={(questionId, understanding) =>
+                  handleUpdateQuestion(questionId, { understanding })
+                }
+                onSolvedCountChange={(questionId, solvedCount) =>
+                  handleUpdateQuestion(questionId, { solvedCount })
+                }
               />
             ))}
             <AddBigTopicRow onAdd={handleAddTopic} />
@@ -225,7 +280,11 @@ export function AlgoSheet() {
             editQuestion: null,
           }))
         }
-        onSave={handleSaveQuestion}
+        onSave={(questionData) =>
+          dialogConfig.editQuestion
+            ? handleUpdateQuestion(dialogConfig.editQuestion.id, questionData)
+            : handleAddQuestion({ ...questionData, solvedCount: 0 })
+        }
         initialData={dialogConfig.editQuestion ?? undefined}
       />
     </div>
