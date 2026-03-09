@@ -4,19 +4,60 @@ import {
   RiCloseLine,
   RiCodeSSlashLine,
   RiFileCodeLine,
+  RiPencilLine,
 } from "@remixicon/react";
 import { useState } from "react";
-import { Difficulty, HintFormat } from "./types";
+import { Difficulty, HintFormat, Question, Understanding } from "./types";
+
+const UNDERSTANDING_OPTIONS: {
+  value: Understanding;
+  label: string;
+  selectedBg: string;
+  selectedText: string;
+}[] = [
+  {
+    value: "None",
+    label: "None",
+    selectedBg: "bg-red-900",
+    selectedText: "text-white",
+  },
+  {
+    value: "Weak",
+    label: "Weak",
+    selectedBg: "bg-red-200",
+    selectedText: "text-red-900",
+  },
+  {
+    value: "Fair",
+    label: "Fair",
+    selectedBg: "bg-yellow-100",
+    selectedText: "text-yellow-800",
+  },
+  {
+    value: "Good",
+    label: "Good",
+    selectedBg: "bg-green-100",
+    selectedText: "text-green-800",
+  },
+  {
+    value: "Strong",
+    label: "Strong",
+    selectedBg: "bg-green-800",
+    selectedText: "text-white",
+  },
+];
 
 interface QuestionDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  initialData?: Question;
   onSave: (data: {
     title: string;
     level: Difficulty;
     link: string;
     hint: string;
     hintFormat: HintFormat;
+    understanding: Understanding;
     codes: { language: string; code: string }[];
   }) => void;
 }
@@ -25,13 +66,21 @@ export function QuestionDialog({
   isOpen,
   onClose,
   onSave,
+  initialData,
 }: QuestionDialogProps) {
-  const [title, setTitle] = useState("");
-  const [level, setLevel] = useState<Difficulty>("Easy");
-  const [link, setLink] = useState("");
-  const [hint, setHint] = useState("");
-  const [codeLang, setCodeLang] = useState("Python");
-  const [code, setCode] = useState("");
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [level, setLevel] = useState<Difficulty>(initialData?.level ?? "Easy");
+  const [link, setLink] = useState(initialData?.link ?? "");
+  const [hint, setHint] = useState(initialData?.hint ?? "");
+  const [understanding, setUnderstanding] = useState<Understanding>(
+    initialData?.understanding ?? "None"
+  );
+  const [codeLang, setCodeLang] = useState(
+    initialData?.codes?.[0]?.language ?? "Python"
+  );
+  const [code, setCode] = useState(initialData?.codes?.[0]?.code ?? "");
+
+  const isEditing = !!initialData;
 
   if (!isOpen) return null;
 
@@ -47,6 +96,7 @@ export function QuestionDialog({
       link: link.trim() || "",
       hint: hint.trim(),
       hintFormat: "Text",
+      understanding,
       codes: codeList,
     });
     onClose();
@@ -58,8 +108,12 @@ export function QuestionDialog({
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/40">
           <h3 className="font-extrabold text-lg flex items-center gap-2">
-            <RiFileCodeLine className="size-5 text-muted-foreground" />
-            Add New Question
+            {isEditing ? (
+              <RiPencilLine className="size-5 text-muted-foreground" />
+            ) : (
+              <RiFileCodeLine className="size-5 text-muted-foreground" />
+            )}
+            {isEditing ? "Edit Question" : "Add New Question"}
           </h3>
           <button
             onClick={onClose}
@@ -112,6 +166,32 @@ export function QuestionDialog({
             </div>
           </div>
 
+          {/* Understanding */}
+          <div>
+            <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">
+              Understanding
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {UNDERSTANDING_OPTIONS.map((opt) => {
+                const isSelected = understanding === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setUnderstanding(opt.value)}
+                    className={`px-4 py-1.5 text-sm font-semibold border transition-all rounded-sm ${
+                      isSelected
+                        ? `${opt.selectedBg} ${opt.selectedText} border-transparent shadow-sm`
+                        : "bg-card text-muted-foreground border-border hover:border-ring"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">
               Hint
@@ -160,7 +240,7 @@ export function QuestionDialog({
             onClick={handleSave}
             className="px-5 py-2 bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors shadow-md active:scale-95"
           >
-            Save Question
+            {isEditing ? "Update Question" : "Save Question"}
           </button>
         </div>
       </div>

@@ -1,27 +1,28 @@
 "use client";
 
-import {
-  RiAddCircleLine,
-  RiArrowRightSLine,
-  RiBookOpenLine,
-  RiFileCodeLine,
-  RiFolderAddLine,
-} from "@remixicon/react";
+import { RiArrowRightSLine, RiBookOpenLine } from "@remixicon/react";
 import { useState } from "react";
 import { QuestionRow } from "./question-row";
 import { SubtopicRow } from "./subtopic-row";
-import { Topic } from "./types";
+import { Question, Topic, Understanding } from "./types";
 
 interface TopicRowProps {
   topic: Topic;
   onAddSubtopic: (topicId: string, title: string) => void;
   onOpenAddQuestion: (topicId: string, subtopicId: string | null) => void;
+  onEditQuestion: (question: Question) => void;
+  onUnderstandingChange: (
+    questionId: string,
+    understanding: Understanding
+  ) => void;
 }
 
 export function TopicRow({
   topic,
   onAddSubtopic,
   onOpenAddQuestion,
+  onEditQuestion,
+  onUnderstandingChange,
 }: TopicRowProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [addingSubtopic, setAddingSubtopic] = useState(false);
@@ -56,7 +57,7 @@ export function TopicRow({
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -64,21 +65,19 @@ export function TopicRow({
               setAddingSubtopic(true);
             }}
             title="Add subtopic"
-            className="opacity-0 group-hover/topic:opacity-100 transition-opacity flex items-center gap-1 px-2 py-0.5 border border-border bg-background hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-medium"
+            className="opacity-0 group-hover/topic:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-0.5 border border-transparent hover:border-border hover:bg-accent"
           >
-            <RiFolderAddLine className="size-3" />
-            <RiAddCircleLine className="size-3" />
+            + Subtopic
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onOpenAddQuestion(topic.id, null);
             }}
-            title="Add direct question"
-            className="opacity-0 group-hover/topic:opacity-100 transition-opacity flex items-center gap-1 px-2 py-0.5 border border-border bg-background hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-medium"
+            title="Add question"
+            className="opacity-0 group-hover/topic:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-0.5 border border-transparent hover:border-border hover:bg-accent"
           >
-            <RiFileCodeLine className="size-3" />
-            <RiAddCircleLine className="size-3" />
+            + Question
           </button>
           <span className="text-xs font-bold text-muted-foreground bg-background px-2 py-0.5 border border-border">
             {totalQuestions} problems
@@ -117,11 +116,19 @@ export function TopicRow({
               topicId={topic.id}
               subtopic={st}
               onOpenAddQuestion={onOpenAddQuestion}
+              onEditQuestion={onEditQuestion}
+              onUnderstandingChange={onUnderstandingChange}
             />
           ))}
 
           {topic.questions?.map((q) => (
-            <QuestionRow key={q.id} question={q} depth={1} />
+            <QuestionRow
+              key={q.id}
+              question={q}
+              depth={1}
+              onEdit={() => onEditQuestion(q)}
+              onUnderstandingChange={(u) => onUnderstandingChange(q.id, u)}
+            />
           ))}
         </div>
       )}

@@ -1,5 +1,6 @@
 export type Difficulty = "Easy" | "Medium" | "Hard";
 export type HintFormat = "Text" | "Markdown";
+export type Understanding = "None" | "Weak" | "Fair" | "Good" | "Strong";
 
 export interface Code {
   id: string;
@@ -17,6 +18,7 @@ export interface Question {
   solvedCount: number;
   hint?: string | null;
   hintFormat?: HintFormat | null;
+  understanding?: Understanding | null;
   codes: Code[];
   topicId?: string | null;
   subtopicId?: string | null;

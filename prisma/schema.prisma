@@ -109,11 +109,20 @@ model Question {
   subtopicId String?
   subtopic   Subtopic? @relation(fields: [subtopicId], references: [id])
 
-  hintFormat HintFormat?
-  hint       String?
-  codes      Code[]
+  hintFormat    HintFormat?
+  hint          String?
+  understanding Understanding?
+  codes         Code[]
 
   createdAt DateTime @default(now())
+}
+
+enum Understanding {
+  None
+  Weak
+  Fair
+  Good
+  Strong
 }
 
 enum Level {

@@ -6,7 +6,13 @@ import { DUMMY_DATA } from "./data";
 import { AlgoSheetHeader } from "./header";
 import { QuestionDialog } from "./question-dialog";
 import { TopicRow } from "./topic-row";
-import { Difficulty, HintFormat, Topic } from "./types";
+import {
+  Difficulty,
+  HintFormat,
+  Question,
+  Topic,
+  Understanding,
+} from "./types";
 
 export function AlgoSheet() {
   const [data, setData] = useState<Topic[]>(DUMMY_DATA);
@@ -14,7 +20,8 @@ export function AlgoSheet() {
     isOpen: boolean;
     topicId: string | null;
     subtopicId: string | null;
-  }>({ isOpen: false, topicId: null, subtopicId: null });
+    editQuestion: Question | null;
+  }>({ isOpen: false, topicId: null, subtopicId: null, editQuestion: null });
 
   const handleAddTopic = (title: string) => {
     setData((prev) => [
@@ -51,12 +58,48 @@ export function AlgoSheet() {
     link: string;
     hint: string;
     hintFormat: HintFormat;
+    understanding: Understanding;
     codes: { language: string; code: string }[];
   }) => {
-    const { topicId, subtopicId } = dialogConfig;
-    if (!topicId) return;
+    const { topicId, subtopicId, editQuestion } = dialogConfig;
 
-    const newQuestion = {
+    // --- Edit existing ---
+    if (editQuestion) {
+      const updatedQuestion: Question = {
+        ...editQuestion,
+        title: questionData.title,
+        level: questionData.level,
+        link: questionData.link || null,
+        hint: questionData.hint || null,
+        hintFormat: questionData.hint ? questionData.hintFormat : null,
+        understanding: questionData.understanding,
+        codes: questionData.codes.map((c, i) => ({
+          id: editQuestion.codes[i]?.id ?? `c-${Date.now()}-${i}`,
+          questionId: editQuestion.id,
+          title: null,
+          ...c,
+        })),
+      };
+
+      const updateQuestion = (questions: Question[]) =>
+        questions.map((q) => (q.id === editQuestion.id ? updatedQuestion : q));
+
+      setData((prev) =>
+        prev.map((topic) => ({
+          ...topic,
+          questions: updateQuestion(topic.questions ?? []),
+          subtopics: topic.subtopics.map((st) => ({
+            ...st,
+            questions: updateQuestion(st.questions),
+          })),
+        }))
+      );
+      return;
+    }
+
+    // --- Add new ---
+    if (!topicId) return;
+    const newQuestion: Question = {
       id: `q-${Date.now()}`,
       solvedCount: 0,
       topicId,
@@ -69,6 +112,7 @@ export function AlgoSheet() {
       })),
       hint: questionData.hint || null,
       hintFormat: questionData.hint ? questionData.hintFormat : null,
+      understanding: questionData.understanding,
       title: questionData.title,
       level: questionData.level,
       link: questionData.link || null,
@@ -95,6 +139,33 @@ export function AlgoSheet() {
     );
   };
 
+  const handleEditQuestion = (question: Question) => {
+    setDialogConfig({
+      isOpen: true,
+      topicId: question.topicId ?? null,
+      subtopicId: question.subtopicId ?? null,
+      editQuestion: question,
+    });
+  };
+
+  const handleUnderstandingChange = (
+    questionId: string,
+    understanding: Understanding
+  ) => {
+    const update = (qs: Question[]) =>
+      qs.map((q) => (q.id === questionId ? { ...q, understanding } : q));
+    setData((prev) =>
+      prev.map((topic) => ({
+        ...topic,
+        questions: update(topic.questions ?? []),
+        subtopics: topic.subtopics.map((st) => ({
+          ...st,
+          questions: update(st.questions),
+        })),
+      }))
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-accent selection:text-accent-foreground pb-20">
       <AlgoSheetHeader />
@@ -112,9 +183,11 @@ export function AlgoSheet() {
         <div className="border border-border bg-card shadow-sm overflow-hidden flex flex-col">
           {/* Table header */}
           <div className="flex items-center px-4 py-2.5 bg-muted border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            <div className="w-16 pl-4 shrink-0">Done</div>
+            <div className="w-10 shrink-0 text-center">Done</div>
             <div className="flex-1 pr-4">Title</div>
             <div className="w-20 shrink-0">Level</div>
+            <div className="w-28 shrink-0">Solved</div>
+            <div className="w-32 shrink-0">Understanding</div>
             <div className="w-32 shrink-0 text-right">Actions</div>
           </div>
 
@@ -126,8 +199,15 @@ export function AlgoSheet() {
                 topic={topic}
                 onAddSubtopic={handleAddSubtopic}
                 onOpenAddQuestion={(topicId, subtopicId) =>
-                  setDialogConfig({ isOpen: true, topicId, subtopicId })
+                  setDialogConfig({
+                    isOpen: true,
+                    topicId,
+                    subtopicId,
+                    editQuestion: null,
+                  })
                 }
+                onEditQuestion={handleEditQuestion}
+                onUnderstandingChange={handleUnderstandingChange}
               />
             ))}
             <AddBigTopicRow onAdd={handleAddTopic} />
@@ -136,10 +216,17 @@ export function AlgoSheet() {
       </main>
 
       <QuestionDialog
-        key={`${dialogConfig.topicId}-${dialogConfig.subtopicId}-${dialogConfig.isOpen}`}
+        key={`${dialogConfig.editQuestion?.id ?? "new"}-${dialogConfig.topicId}-${dialogConfig.subtopicId}-${dialogConfig.isOpen}`}
         isOpen={dialogConfig.isOpen}
-        onClose={() => setDialogConfig((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setDialogConfig((prev) => ({
+            ...prev,
+            isOpen: false,
+            editQuestion: null,
+          }))
+        }
         onSave={handleSaveQuestion}
+        initialData={dialogConfig.editQuestion ?? undefined}
       />
     </div>
   );

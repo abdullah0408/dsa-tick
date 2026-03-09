@@ -1,25 +1,27 @@
 "use client";
 
-import {
-  RiAddCircleLine,
-  RiArrowRightSLine,
-  RiFileCodeLine,
-  RiFolderOpenLine,
-} from "@remixicon/react";
+import { RiArrowRightSLine, RiFolderOpenLine } from "@remixicon/react";
 import { useState } from "react";
 import { QuestionRow } from "./question-row";
-import { Subtopic } from "./types";
+import { Question, Subtopic, Understanding } from "./types";
 
 interface SubtopicRowProps {
   topicId: string;
   subtopic: Subtopic;
   onOpenAddQuestion: (topicId: string, subtopicId: string | null) => void;
+  onEditQuestion: (question: Question) => void;
+  onUnderstandingChange: (
+    questionId: string,
+    understanding: Understanding
+  ) => void;
 }
 
 export function SubtopicRow({
   topicId,
   subtopic,
   onOpenAddQuestion,
+  onEditQuestion,
+  onUnderstandingChange,
 }: SubtopicRowProps) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -48,10 +50,9 @@ export function SubtopicRow({
               e.stopPropagation();
               onOpenAddQuestion(topicId, subtopic.id);
             }}
-            className="opacity-0 group-hover/subtopic:opacity-100 transition-opacity flex items-center gap-1 px-2 py-0.5 border border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground text-xs font-medium"
+            className="opacity-0 group-hover/subtopic:opacity-100 transition-opacity text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-0.5 border border-transparent hover:border-border hover:bg-accent"
           >
-            <RiFileCodeLine className="size-3" />
-            <RiAddCircleLine className="size-3" />
+            + Question
           </button>
           <span className="text-xs font-medium text-muted-foreground w-16 text-right">
             {subtopic.questions.length} items
@@ -62,7 +63,13 @@ export function SubtopicRow({
       {isOpen && (
         <>
           {subtopic.questions.map((q) => (
-            <QuestionRow key={q.id} question={q} depth={2} />
+            <QuestionRow
+              key={q.id}
+              question={q}
+              depth={2}
+              onEdit={() => onEditQuestion(q)}
+              onUnderstandingChange={(u) => onUnderstandingChange(q.id, u)}
+            />
           ))}
         </>
       )}
