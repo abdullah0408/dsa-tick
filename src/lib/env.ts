@@ -3,10 +3,13 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
-    DATABASE_URL: z.string().url(), // Server-only secrets, never exposed to client
+    // Server-only secrets, never exposed to client
+    DATABASE_URL: z.url(),
+    BETTER_AUTH_URL: z.url(),
+    BETTER_AUTH_SECRET: z.string().min(5),
   },
   client: {
-    NEXT_PUBLIC_BASE_URL: z.string().url(), // Public values safe for client
+    NEXT_PUBLIC_BASE_URL: z.url(), // Public values safe for client
   },
   // Use experimental__runtimeEnv for client-side values that are only available at runtime,
   // e.g., dynamic URLs or keys that are not known at build time.

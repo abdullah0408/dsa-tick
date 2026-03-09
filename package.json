@@ -19,13 +19,15 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:migrate:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
-    "prisma:db:push": "prisma db push"
+    "prisma:db:push": "prisma db push",
+    "auth:generate": "bunx @better-auth/cli generate --config ./src/lib/auth.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@remixicon/react": "^4.9.0",
+    "better-auth": "^1.5.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -48,6 +50,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
