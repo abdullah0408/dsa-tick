@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  addQuestion,
-  addSubtopic,
-  addTopic,
-  updateQuestion,
-} from "@/app/actions/algo-sheet";
+import { updateQuestion } from "@/app/actions/algo-sheet";
+import { useTRPC } from "@/trpc/client";
+import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { AddBigTopicRow } from "./add-rows";
 import { AlgoSheetHeader } from "./header";
@@ -21,6 +18,8 @@ import {
 
 export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
   const [data, setData] = useState<Topic[]>(initialData);
+  const trpc = useTRPC();
+
   const [dialogConfig, setDialogConfig] = useState<{
     isOpen: boolean;
     topicId: string | null;
@@ -28,46 +27,180 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
     editQuestion: Question | null;
   }>({ isOpen: false, topicId: null, subtopicId: null, editQuestion: null });
 
-  const handleAddTopic = async (title: string) => {
-    const tempId = `temp-${Date.now()}`;
-    setData((prev) => [
-      ...prev,
-      { id: tempId, title, userId: "abc", questions: [], subtopics: [] },
-    ]);
-    try {
-      await addTopic(title);
-    } catch {
-      setData((prev) => prev.filter((t) => t.id !== tempId));
-    }
-  };
+  const addTopicMutation = useMutation(
+    trpc.algoSheet.addTopic.mutationOptions({
+      onMutate: ({ title }) => {
+        const tempId = crypto.randomUUID();
+        setData((prev) => [
+          ...prev,
+          { id: tempId, title, userId: "abc", questions: [], subtopics: [] },
+        ]);
+        return { tempId };
+      },
+      onError: (error, _, ctx) => {
+        console.error("addTopic error:", error);
+        setData((prev) => prev.filter((t) => t.id !== ctx?.tempId));
+      },
+      onSuccess: (newTopic, _, ctx) => {
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === ctx?.tempId ? { ...t, id: newTopic.id } : t
+          )
+        );
+      },
+    })
+  );
 
-  const handleAddSubtopic = async (topicId: string, title: string) => {
-    const tempId = `temp-${Date.now()}`;
-    setData((prev) =>
-      prev.map((t) =>
-        t.id === topicId
-          ? {
-              ...t,
-              subtopics: [
-                ...t.subtopics,
-                { id: tempId, title, topicId, questions: [] },
-              ],
-            }
-          : t
-      )
-    );
-    try {
-      await addSubtopic(topicId, title);
-    } catch {
-      setData((prev) =>
-        prev.map((t) =>
-          t.id === topicId
-            ? { ...t, subtopics: t.subtopics.filter((st) => st.id !== tempId) }
-            : t
-        )
-      );
-    }
-  };
+  const addSubtopicMutation = useMutation(
+    trpc.algoSheet.addSubtopic.mutationOptions({
+      onMutate: ({ topicId, title }) => {
+        const tempId = crypto.randomUUID();
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === topicId
+              ? {
+                  ...t,
+                  subtopics: [
+                    ...t.subtopics,
+                    { id: tempId, title, topicId, questions: [] },
+                  ],
+                }
+              : t
+          )
+        );
+        return { tempId, topicId };
+      },
+      onError: (error, _, ctx) => {
+        console.error("addSubtopic error:", error);
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === ctx?.topicId
+              ? {
+                  ...t,
+                  subtopics: t.subtopics.filter((st) => st.id !== ctx.tempId),
+                }
+              : t
+          )
+        );
+      },
+      onSuccess: (newSubtopic, _, ctx) => {
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === ctx?.topicId
+              ? {
+                  ...t,
+                  subtopics: t.subtopics.map((st) =>
+                    st.id === ctx.tempId ? { ...st, id: newSubtopic.id } : st
+                  ),
+                }
+              : t
+          )
+        );
+      },
+    })
+  );
+
+  const addTopicQuestionMutation = useMutation(
+    trpc.algoSheet.addTopicQuestion.mutationOptions({
+      onMutate: (input) => {
+        const tempId = crypto.randomUUID();
+        const tempQuestion: Question = {
+          id: tempId,
+          title: input.title,
+          level: input.level,
+          link: input.link || null,
+          hint: input.hint || null,
+          hintFormat: input.hint ? input.hintFormat : null,
+          understanding: input.understanding,
+          solvedCount: 0,
+          topicId: input.topicId,
+          subtopicId: null,
+          codes: input.codes.map((c, i) => ({
+            id: `temp-c-${i}`,
+            questionId: tempId,
+            title: null,
+            ...c,
+          })),
+        };
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === input.topicId
+              ? { ...t, questions: [...(t.questions ?? []), tempQuestion] }
+              : t
+          )
+        );
+        return { tempId, topicId: input.topicId };
+      },
+      onError: (error, _, ctx) => {
+        console.error("addTopicQuestion error:", error);
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === ctx?.topicId
+              ? {
+                  ...t,
+                  questions: (t.questions ?? []).filter(
+                    (q) => q.id !== ctx.tempId
+                  ),
+                }
+              : t
+          )
+        );
+      },
+    })
+  );
+
+  const addSubtopicQuestionMutation = useMutation(
+    trpc.algoSheet.addSubtopicQuestion.mutationOptions({
+      onMutate: (input) => {
+        const tempId = crypto.randomUUID();
+        const tempQuestion: Question = {
+          id: tempId,
+          title: input.title,
+          level: input.level,
+          link: input.link || null,
+          hint: input.hint || null,
+          hintFormat: input.hint ? input.hintFormat : null,
+          understanding: input.understanding,
+          solvedCount: 0,
+          topicId: null,
+          subtopicId: input.subtopicId,
+          codes: input.codes.map((c, i) => ({
+            id: `temp-c-${i}`,
+            questionId: tempId,
+            title: null,
+            ...c,
+          })),
+        };
+        setData((prev) =>
+          prev.map((t) => ({
+            ...t,
+            subtopics: t.subtopics.map((st) =>
+              st.id === input.subtopicId
+                ? { ...st, questions: [...st.questions, tempQuestion] }
+                : st
+            ),
+          }))
+        );
+        return { tempId, subtopicId: input.subtopicId };
+      },
+      onError: (error, _, ctx) => {
+        console.error("addSubtopicQuestion error:", error);
+        setData((prev) =>
+          prev.map((t) => ({
+            ...t,
+            subtopics: t.subtopics.map((st) =>
+              st.id === ctx?.subtopicId
+                ? {
+                    ...st,
+                    questions: st.questions.filter((q) => q.id !== ctx.tempId),
+                  }
+                : st
+            ),
+          }))
+        );
+      },
+    })
+  );
 
   type QuestionFormData = {
     title: string;
@@ -80,76 +213,23 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
     codes: { language: string; code: string }[];
   };
 
+  const handleAddQuestion = (questionData: QuestionFormData) => {
+    const { topicId, subtopicId } = dialogConfig;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { solvedCount: _solvedCount, ...rest } = questionData;
+    if (subtopicId) {
+      addSubtopicQuestionMutation.mutate({ subtopicId, ...rest });
+    } else if (topicId) {
+      addTopicQuestionMutation.mutate({ topicId, ...rest });
+    }
+  };
+
   const findQuestion = (id: string): Question | undefined => {
     for (const t of data) {
       const q =
         (t.questions ?? []).find((q) => q.id === id) ??
         t.subtopics.flatMap((st) => st.questions).find((q) => q.id === id);
       if (q) return q;
-    }
-  };
-
-  const handleAddQuestion = async (questionData: QuestionFormData) => {
-    const { topicId, subtopicId } = dialogConfig;
-    if (!topicId) return;
-    const tempId = `temp-${Date.now()}`;
-    const tempQuestion: Question = {
-      id: tempId,
-      title: questionData.title,
-      level: questionData.level,
-      link: questionData.link || null,
-      hint: questionData.hint || null,
-      hintFormat: questionData.hint ? questionData.hintFormat : null,
-      understanding: questionData.understanding,
-      solvedCount: 0,
-      topicId,
-      subtopicId: subtopicId ?? null,
-      codes: questionData.codes.map((c, i) => ({
-        id: `temp-c-${i}`,
-        questionId: tempId,
-        title: null,
-        ...c,
-      })),
-    };
-    setData((prev) =>
-      prev.map((t) => {
-        if (t.id !== topicId) return t;
-        if (subtopicId)
-          return {
-            ...t,
-            subtopics: t.subtopics.map((st) =>
-              st.id === subtopicId
-                ? { ...st, questions: [...st.questions, tempQuestion] }
-                : st
-            ),
-          };
-        return { ...t, questions: [...(t.questions ?? []), tempQuestion] };
-      })
-    );
-    try {
-      await addQuestion(topicId, subtopicId, questionData);
-    } catch {
-      setData((prev) =>
-        prev.map((t) => {
-          if (t.id !== topicId) return t;
-          if (subtopicId)
-            return {
-              ...t,
-              subtopics: t.subtopics.map((st) =>
-                st.id === subtopicId
-                  ? {
-                      ...st,
-                      questions: st.questions.filter((q) => q.id !== tempId),
-                    }
-                  : st
-              ),
-            };
-          return {
-            ...t,
-            questions: (t.questions ?? []).filter((q) => q.id !== tempId),
-          };
-        })
-      );
     }
   };
 
@@ -247,7 +327,9 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
               <TopicRow
                 key={topic.id}
                 topic={topic}
-                onAddSubtopic={handleAddSubtopic}
+                onAddSubtopic={(topicId, title) =>
+                  addSubtopicMutation.mutate({ topicId, title })
+                }
                 onOpenAddQuestion={(topicId, subtopicId) =>
                   setDialogConfig({
                     isOpen: true,
@@ -265,7 +347,9 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
                 }
               />
             ))}
-            <AddBigTopicRow onAdd={handleAddTopic} />
+            <AddBigTopicRow
+              onAdd={(title) => addTopicMutation.mutate({ title })}
+            />
           </div>
         </div>
       </main>
