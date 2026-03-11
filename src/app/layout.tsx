@@ -3,6 +3,7 @@ import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/providers";
+import { TRPCReactProvider } from "@/trpc/client";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -26,7 +27,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        <Providers>{children}</Providers>
+        <TRPCReactProvider>
+          <Providers>{children}</Providers>
+        </TRPCReactProvider>
       </body>
     </html>
   );
