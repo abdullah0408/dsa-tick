@@ -1,15 +1,13 @@
 import prisma from "@/lib/prisma";
 import { z } from "zod";
-import { protectedProcedure, createTRPCRouter } from "../init";
-
-const HARDCODED_USER_ID = "abc";
+import { createTRPCRouter, protectedProcedure } from "../init";
 
 export const algoSheetRouter = createTRPCRouter({
   addTopic: protectedProcedure
     .input(z.object({ title: z.string().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const topic = await prisma.topic.create({
-        data: { title: input.title, userId: HARDCODED_USER_ID },
+        data: { title: input.title, userId: ctx.auth.user.id },
       });
       return topic;
     }),

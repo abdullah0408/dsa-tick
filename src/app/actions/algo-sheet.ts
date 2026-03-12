@@ -5,14 +5,20 @@ import {
   HintFormat,
   Understanding,
 } from "@/components/algo-sheet/types";
+import { requireAuth } from "@/lib/auth.utils";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-const HARDCODED_USER_ID = "abc";
+async function getCurrentUserId() {
+  const session = await requireAuth();
+  return session.user.id;
+}
 
 export async function getTopics() {
+  const userId = await getCurrentUserId();
+
   return prisma.topic.findMany({
-    where: { userId: HARDCODED_USER_ID },
+    where: { userId },
     include: {
       questions: {
         where: { subtopicId: null },
@@ -34,8 +40,10 @@ export async function getTopics() {
 }
 
 export async function addTopic(title: string) {
+  const userId = await getCurrentUserId();
+
   await prisma.topic.create({
-    data: { title, userId: HARDCODED_USER_ID },
+    data: { title, userId },
   });
   revalidatePath("/");
 }
