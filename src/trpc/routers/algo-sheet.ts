@@ -1,11 +1,11 @@
 import prisma from "@/lib/prisma";
 import { z } from "zod";
-import { baseProcedure, createTRPCRouter } from "../init";
+import { protectedProcedure, createTRPCRouter } from "../init";
 
 const HARDCODED_USER_ID = "abc";
 
 export const algoSheetRouter = createTRPCRouter({
-  addTopic: baseProcedure
+  addTopic: protectedProcedure
     .input(z.object({ title: z.string().min(1) }))
     .mutation(async ({ input }) => {
       const topic = await prisma.topic.create({
@@ -13,7 +13,7 @@ export const algoSheetRouter = createTRPCRouter({
       });
       return topic;
     }),
-  addSubtopic: baseProcedure
+  addSubtopic: protectedProcedure
     .input(z.object({ topicId: z.string(), title: z.string().min(1) }))
     .mutation(async ({ input }) => {
       const subtopic = await prisma.subtopic.create({
@@ -22,7 +22,7 @@ export const algoSheetRouter = createTRPCRouter({
       return subtopic;
     }),
 
-  addTopicQuestion: baseProcedure
+  addTopicQuestion: protectedProcedure
     .input(
       z.object({
         topicId: z.string(),
@@ -51,7 +51,7 @@ export const algoSheetRouter = createTRPCRouter({
       });
     }),
 
-  addSubtopicQuestion: baseProcedure
+  addSubtopicQuestion: protectedProcedure
     .input(
       z.object({
         subtopicId: z.string(),

@@ -1,4 +1,5 @@
 import { ThemeProvider } from "./theme-provider";
+import { Toaster } from "./ui/sonner";
 import { TooltipProvider } from "./ui/tooltip";
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
@@ -9,7 +10,10 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       enableSystem
       disableTransitionOnChange
     >
-      <TooltipProvider>{children}</TooltipProvider>{" "}
+      <TooltipProvider>
+        {children}
+        <Toaster />
+      </TooltipProvider>
     </ThemeProvider>
   );
 };
