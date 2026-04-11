@@ -1,6 +1,21 @@
 "use client";
 
-import { RiArrowRightSLine, RiBookOpenLine } from "@remixicon/react";
+import {
+  RiArrowRightSLine,
+  RiBookOpenLine,
+  RiDeleteBinLine,
+} from "@remixicon/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { QuestionRow } from "./question-row";
 import { SubtopicRow } from "./subtopic-row";
@@ -9,8 +24,11 @@ import { Question, Topic, Understanding } from "./types";
 interface TopicRowProps {
   topic: Topic;
   onAddSubtopic: (topicId: string, title: string) => void;
+  onDeleteTopic: (topicId: string) => void;
+  onDeleteSubtopic: (subtopicId: string) => void;
   onOpenAddQuestion: (topicId: string, subtopicId: string | null) => void;
   onEditQuestion: (question: Question) => void;
+  onDeleteQuestion: (questionId: string) => void;
   onUnderstandingChange: (
     questionId: string,
     understanding: Understanding
@@ -21,8 +39,11 @@ interface TopicRowProps {
 export function TopicRow({
   topic,
   onAddSubtopic,
+  onDeleteTopic,
+  onDeleteSubtopic,
   onOpenAddQuestion,
   onEditQuestion,
+  onDeleteQuestion,
   onUnderstandingChange,
   onSolvedCountChange,
 }: TopicRowProps) {
@@ -81,6 +102,35 @@ export function TopicRow({
           >
             + Question
           </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                title="Delete topic"
+                className="opacity-0 group-hover/topic:opacity-100 transition-opacity size-6 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-accent border border-transparent hover:border-border"
+              >
+                <RiDeleteBinLine className="size-3.5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete topic?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove {topic.title} and all nested
+                  subtopics and questions.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => onDeleteTopic(topic.id)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <span className="text-xs font-bold text-muted-foreground bg-background px-2 py-0.5 border border-border">
             {totalQuestions} problems
           </span>
@@ -117,8 +167,10 @@ export function TopicRow({
               key={st.id}
               topicId={topic.id}
               subtopic={st}
+              onDeleteSubtopic={onDeleteSubtopic}
               onOpenAddQuestion={onOpenAddQuestion}
               onEditQuestion={onEditQuestion}
+              onDeleteQuestion={onDeleteQuestion}
               onUnderstandingChange={onUnderstandingChange}
               onSolvedCountChange={onSolvedCountChange}
             />
@@ -130,6 +182,7 @@ export function TopicRow({
               question={q}
               depth={1}
               onEdit={() => onEditQuestion(q)}
+              onDelete={() => onDeleteQuestion(q.id)}
               onUnderstandingChange={(u) => onUnderstandingChange(q.id, u)}
               onSolvedCountChange={(count) => onSolvedCountChange(q.id, count)}
             />

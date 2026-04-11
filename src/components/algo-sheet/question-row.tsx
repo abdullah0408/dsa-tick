@@ -5,12 +5,24 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
   RiCodeSSlashLine,
+  RiDeleteBinLine,
   RiExternalLinkLine,
   RiFileCodeLine,
   RiLightbulbLine,
   RiPencilLine,
   RiSubtractLine,
 } from "@remixicon/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useEffect, useRef, useState } from "react";
 import { LevelBadge } from "./level-badge";
 import { Question, Understanding } from "./types";
@@ -64,6 +76,7 @@ interface QuestionRowProps {
   question: Question;
   depth: 1 | 2;
   onEdit?: () => void;
+  onDelete?: () => void;
   onUnderstandingChange?: (understanding: Understanding) => void;
   onSolvedCountChange?: (solvedCount: number) => void;
 }
@@ -72,6 +85,7 @@ export function QuestionRow({
   question,
   depth,
   onEdit,
+  onDelete,
   onUnderstandingChange,
   onSolvedCountChange,
 }: QuestionRowProps) {
@@ -139,7 +153,9 @@ export function QuestionRow({
             target="_blank"
             rel="noreferrer"
             className={`text-sm font-medium truncate hover:underline underline-offset-4 ${
-              solved ? "text-muted-foreground" : "text-foreground"
+              solved
+                ? "text-muted-foreground line-through decoration-muted-foreground/70"
+                : "text-foreground"
             }`}
           >
             {question.title}
@@ -265,6 +281,30 @@ export function QuestionRow({
           >
             <RiPencilLine className="size-3" />
           </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                title="Delete question"
+                className="size-6 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-accent border border-transparent hover:border-border transition-colors shrink-0"
+              >
+                <RiDeleteBinLine className="size-3" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete question?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove {question.title}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={onDelete}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
