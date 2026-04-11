@@ -4,6 +4,7 @@ import { updateQuestion } from "@/app/actions/algo-sheet";
 import { useTRPC } from "@/trpc/client";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import { AddBigTopicRow } from "./add-rows";
 import { AlgoSheetHeader } from "./header";
 import { QuestionDialog } from "./question-dialog";
@@ -40,13 +41,15 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
       onError: (error, _, ctx) => {
         console.error("addTopic error:", error);
         setData((prev) => prev.filter((t) => t.id !== ctx?.tempId));
+        toast.error("Failed to add topic. It was not saved to database.");
       },
-      onSuccess: (newTopic, _, ctx) => {
+      onSuccess: (newTopic, variables, ctx) => {
         setData((prev) =>
           prev.map((t) =>
             t.id === ctx?.tempId ? { ...t, id: newTopic.id } : t
           )
         );
+        toast.success(`Topic added: ${variables.title}`);
       },
     })
   );
@@ -82,8 +85,9 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
               : t
           )
         );
+        toast.error("Failed to add subtopic. It was not saved to database.");
       },
-      onSuccess: (newSubtopic, _, ctx) => {
+      onSuccess: (newSubtopic, variables, ctx) => {
         setData((prev) =>
           prev.map((t) =>
             t.id === ctx?.topicId
@@ -96,6 +100,7 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
               : t
           )
         );
+        toast.success(`Subtopic added: ${variables.title}`);
       },
     })
   );
@@ -145,6 +150,10 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
               : t
           )
         );
+        toast.error("Failed to add question. It was not saved to database.");
+      },
+      onSuccess: (_newQuestion, variables) => {
+        toast.success(`Question added: ${variables.title}`);
       },
     })
   );
@@ -198,6 +207,75 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
             ),
           }))
         );
+        toast.error("Failed to add question. It was not saved to database.");
+      },
+      onSuccess: (_newQuestion, variables) => {
+        toast.success(`Question added: ${variables.title}`);
+      },
+    })
+  );
+
+  const deleteTopicMutation = useMutation(
+    trpc.algoSheet.deleteTopic.mutationOptions({
+      onMutate: ({ topicId }) => {
+        const snapshot = data;
+        setData((prev) => prev.filter((t) => t.id !== topicId));
+        return { snapshot };
+      },
+      onError: (_error, _input, ctx) => {
+        if (ctx?.snapshot) setData(ctx.snapshot);
+        toast.error("Failed to delete topic.");
+      },
+      onSuccess: () => {
+        toast.success("Topic deleted.");
+      },
+    })
+  );
+
+  const deleteSubtopicMutation = useMutation(
+    trpc.algoSheet.deleteSubtopic.mutationOptions({
+      onMutate: ({ subtopicId }) => {
+        const snapshot = data;
+        setData((prev) =>
+          prev.map((t) => ({
+            ...t,
+            subtopics: t.subtopics.filter((st) => st.id !== subtopicId),
+          }))
+        );
+        return { snapshot };
+      },
+      onError: (_error, _input, ctx) => {
+        if (ctx?.snapshot) setData(ctx.snapshot);
+        toast.error("Failed to delete subtopic.");
+      },
+      onSuccess: () => {
+        toast.success("Subtopic deleted.");
+      },
+    })
+  );
+
+  const deleteQuestionMutation = useMutation(
+    trpc.algoSheet.deleteQuestion.mutationOptions({
+      onMutate: ({ questionId }) => {
+        const snapshot = data;
+        setData((prev) =>
+          prev.map((t) => ({
+            ...t,
+            questions: (t.questions ?? []).filter((q) => q.id !== questionId),
+            subtopics: t.subtopics.map((st) => ({
+              ...st,
+              questions: st.questions.filter((q) => q.id !== questionId),
+            })),
+          }))
+        );
+        return { snapshot };
+      },
+      onError: (_error, _input, ctx) => {
+        if (ctx?.snapshot) setData(ctx.snapshot);
+        toast.error("Failed to delete question.");
+      },
+      onSuccess: () => {
+        toast.success("Question deleted.");
       },
     })
   );
@@ -235,7 +313,8 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
 
   const handleUpdateQuestion = async (
     questionId: string,
-    patch: Partial<QuestionFormData>
+    patch: Partial<QuestionFormData>,
+    options?: { notify?: boolean }
   ) => {
     const existing = findQuestion(questionId);
     if (!existing) return;
@@ -282,8 +361,12 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
     );
     try {
       await updateQuestion(questionId, merged);
+      if (options?.notify) {
+        toast.success(`Question updated: ${merged.title}`);
+      }
     } catch {
       setData(snapshot);
+      toast.error("Failed to update question. Changes were not saved.");
     }
   };
 
@@ -330,6 +413,12 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
                 onAddSubtopic={(topicId, title) =>
                   addSubtopicMutation.mutate({ topicId, title })
                 }
+                onDeleteTopic={(topicId) =>
+                  deleteTopicMutation.mutate({ topicId })
+                }
+                onDeleteSubtopic={(subtopicId) =>
+                  deleteSubtopicMutation.mutate({ subtopicId })
+                }
                 onOpenAddQuestion={(topicId, subtopicId) =>
                   setDialogConfig({
                     isOpen: true,
@@ -339,6 +428,9 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
                   })
                 }
                 onEditQuestion={handleOpenEditDialog}
+                onDeleteQuestion={(questionId) =>
+                  deleteQuestionMutation.mutate({ questionId })
+                }
                 onUnderstandingChange={(questionId, understanding) =>
                   handleUpdateQuestion(questionId, { understanding })
                 }
@@ -366,7 +458,9 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
         }
         onSave={(questionData) =>
           dialogConfig.editQuestion
-            ? handleUpdateQuestion(dialogConfig.editQuestion.id, questionData)
+            ? handleUpdateQuestion(dialogConfig.editQuestion.id, questionData, {
+                notify: true,
+              })
             : handleAddQuestion({ ...questionData, solvedCount: 0 })
         }
         initialData={dialogConfig.editQuestion ?? undefined}

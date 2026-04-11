@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 
@@ -76,5 +77,65 @@ export const algoSheetRouter = createTRPCRouter({
         },
         include: { codes: { orderBy: { id: "asc" } } },
       });
+    }),
+
+  deleteTopic: protectedProcedure
+    .input(z.object({ topicId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const deleted = await prisma.topic.deleteMany({
+        where: { id: input.topicId, userId: ctx.auth.user.id },
+      });
+
+      if (deleted.count === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Topic not found",
+        });
+      }
+
+      return { success: true };
+    }),
+
+  deleteSubtopic: protectedProcedure
+    .input(z.object({ subtopicId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const deleted = await prisma.subtopic.deleteMany({
+        where: {
+          id: input.subtopicId,
+          topic: { userId: ctx.auth.user.id },
+        },
+      });
+
+      if (deleted.count === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Subtopic not found",
+        });
+      }
+
+      return { success: true };
+    }),
+
+  deleteQuestion: protectedProcedure
+    .input(z.object({ questionId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const deleted = await prisma.question.deleteMany({
+        where: {
+          id: input.questionId,
+          OR: [
+            { topic: { userId: ctx.auth.user.id } },
+            { subtopic: { topic: { userId: ctx.auth.user.id } } },
+          ],
+        },
+      });
+
+      if (deleted.count === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Question not found",
+        });
+      }
+
+      return { success: true };
     }),
 });
