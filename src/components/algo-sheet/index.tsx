@@ -152,7 +152,19 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
         );
         toast.error("Failed to add question. It was not saved to database.");
       },
-      onSuccess: (_newQuestion, variables) => {
+      onSuccess: (newQuestion, variables, ctx) => {
+        setData((prev) =>
+          prev.map((t) =>
+            t.id === ctx?.topicId
+              ? {
+                  ...t,
+                  questions: (t.questions ?? []).map((q) =>
+                    q.id === ctx.tempId ? { ...q, id: newQuestion.id, codes: newQuestion.codes } : q
+                  ),
+                }
+              : t
+          )
+        );
         toast.success(`Question added: ${variables.title}`);
       },
     })
@@ -209,7 +221,22 @@ export function AlgoSheet({ initialData }: { initialData: Topic[] }) {
         );
         toast.error("Failed to add question. It was not saved to database.");
       },
-      onSuccess: (_newQuestion, variables) => {
+      onSuccess: (newQuestion, variables, ctx) => {
+        setData((prev) =>
+          prev.map((t) => ({
+            ...t,
+            subtopics: t.subtopics.map((st) =>
+              st.id === ctx?.subtopicId
+                ? {
+                    ...st,
+                    questions: st.questions.map((q) =>
+                      q.id === ctx.tempId ? { ...q, id: newQuestion.id, codes: newQuestion.codes } : q
+                    ),
+                  }
+                : st
+            ),
+          }))
+        );
         toast.success(`Question added: ${variables.title}`);
       },
     })
