@@ -31,7 +31,13 @@ export const algoSheetRouter = createTRPCRouter({
         hint: z.string(),
         hintFormat: z.enum(["Text", "Markdown"]),
         understanding: z.enum(["None", "Weak", "Fair", "Good", "Strong"]),
-        codes: z.array(z.object({ language: z.string(), code: z.string() })),
+        codes: z.array(
+          z.object({
+            title: z.string().optional(),
+            language: z.string(),
+            code: z.string(),
+          })
+        ),
       })
     )
     .mutation(async ({ input }) => {
@@ -60,7 +66,13 @@ export const algoSheetRouter = createTRPCRouter({
         hint: z.string(),
         hintFormat: z.enum(["Text", "Markdown"]),
         understanding: z.enum(["None", "Weak", "Fair", "Good", "Strong"]),
-        codes: z.array(z.object({ language: z.string(), code: z.string() })),
+        codes: z.array(
+          z.object({
+            title: z.string().optional(),
+            language: z.string(),
+            code: z.string(),
+          })
+        ),
       })
     )
     .mutation(async ({ input }) => {

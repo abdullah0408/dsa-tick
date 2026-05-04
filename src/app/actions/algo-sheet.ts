@@ -65,7 +65,7 @@ export async function addQuestion(
     hint: string;
     hintFormat: HintFormat;
     understanding: Understanding;
-    codes: { language: string; code: string }[];
+    codes: { title?: string; language: string; code: string }[];
   }
 ) {
   await prisma.question.create({
@@ -81,6 +81,7 @@ export async function addQuestion(
       subtopicId: subtopicId ?? null,
       codes: {
         create: data.codes.map((c) => ({
+          title: c.title || null,
           language: c.language,
           code: c.code,
         })),
@@ -100,7 +101,7 @@ export async function updateQuestion(
     hintFormat: HintFormat;
     understanding: Understanding;
     solvedCount: number;
-    codes: { language: string; code: string }[];
+    codes: { title?: string; language: string; code: string }[];
   }
 ) {
   await prisma.code.deleteMany({ where: { questionId: id } });
@@ -116,6 +117,7 @@ export async function updateQuestion(
       solvedCount: data.solvedCount,
       codes: {
         create: data.codes.map((c) => ({
+          title: c.title || null,
           language: c.language,
           code: c.code,
         })),

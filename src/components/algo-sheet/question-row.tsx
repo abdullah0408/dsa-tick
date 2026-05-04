@@ -5,6 +5,7 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
   RiCodeSSlashLine,
+  RiClipboardLine,
   RiDeleteBinLine,
   RiExternalLinkLine,
   RiFileCodeLine,
@@ -24,6 +25,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { CodeViewer } from "./code-viewer";
+import { HintContent } from "./hint-content";
 import { LevelBadge } from "./level-badge";
 import { Question, Understanding } from "./types";
 
@@ -90,7 +94,6 @@ export function QuestionRow({
   onSolvedCountChange,
 }: QuestionRowProps) {
   const [solveCount, setSolveCount] = useState(question.solvedCount);
-  const [solved, setSolved] = useState(question.solvedCount > 0);
   const [showHint, setShowHint] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -98,6 +101,9 @@ export function QuestionRow({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentUnderstanding = question.understanding ?? null;
+  const solved = solveCount > 0;
+  const canShowHint = !!question.hint;
+  const canShowCode = question.codes.length > 0;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -118,6 +124,16 @@ export function QuestionRow({
   };
 
   const paddingLeft = depth === 1 ? "pl-4" : "pl-10";
+  const activeCode = question.codes[activeTab] ?? question.codes[0];
+  const copyHint = async () => {
+    if (!question.hint) return;
+    try {
+      await navigator.clipboard.writeText(question.hint);
+      toast.success("Hint copied.");
+    } catch {
+      toast.error("Could not copy hint.");
+    }
+  };
 
   return (
     <>
@@ -130,7 +146,6 @@ export function QuestionRow({
           <button
             onClick={() => {
               const next = !solved;
-              setSolved(next);
               const nextCount = next ? (solveCount === 0 ? 1 : solveCount) : 0;
               setSolveCount(nextCount);
               onSolvedCountChange?.(nextCount);
@@ -148,19 +163,33 @@ export function QuestionRow({
         {/* Title */}
         <div className="flex-1 min-w-0 pr-4 flex items-center gap-2">
           <RiFileCodeLine className="size-3.5 text-muted-foreground shrink-0" />
-          <a
-            href={question.link ?? "#"}
-            target="_blank"
-            rel="noreferrer"
-            className={`text-sm font-medium truncate hover:underline underline-offset-4 ${
-              solved
-                ? "text-muted-foreground line-through decoration-muted-foreground/70"
-                : "text-foreground"
-            }`}
-          >
-            {question.title}
-          </a>
-          <RiExternalLinkLine className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          {question.link ? (
+            <a
+              href={question.link}
+              target="_blank"
+              rel="noreferrer"
+              className={`text-sm font-medium truncate hover:underline underline-offset-4 ${
+                solved
+                  ? "text-muted-foreground line-through decoration-muted-foreground/70"
+                  : "text-foreground"
+              }`}
+            >
+              {question.title}
+            </a>
+          ) : (
+            <span
+              className={`truncate text-sm font-medium ${
+                solved
+                  ? "text-muted-foreground line-through decoration-muted-foreground/70"
+                  : "text-foreground"
+              }`}
+            >
+              {question.title}
+            </span>
+          )}
+          {question.link && (
+            <RiExternalLinkLine className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          )}
         </div>
 
         {/* Level */}
@@ -175,7 +204,6 @@ export function QuestionRow({
               e.stopPropagation();
               const next = Math.max(0, solveCount - 1);
               setSolveCount(next);
-              if (next === 0) setSolved(false);
               onSolvedCountChange?.(next);
             }}
             className="size-6 flex items-center justify-center border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
@@ -193,7 +221,6 @@ export function QuestionRow({
             onClick={(e) => {
               e.stopPropagation();
               const next = solveCount + 1;
-              if (solveCount === 0) setSolved(true);
               setSolveCount(next);
               onSolvedCountChange?.(next);
             }}
@@ -248,7 +275,7 @@ export function QuestionRow({
 
         {/* Actions */}
         <div className="w-32 shrink-0 flex items-center justify-end gap-1.5">
-          {question.hint && (
+          {canShowHint && (
             <button
               onClick={() => setShowHint(!showHint)}
               className={`h-6 px-2 text-xs font-medium flex items-center gap-1.5 transition-colors border ${
@@ -261,7 +288,7 @@ export function QuestionRow({
               Hint
             </button>
           )}
-          {question.codes.length > 0 && (
+          {canShowCode && (
             <button
               onClick={() => setShowCode(!showCode)}
               className={`h-6 px-2 text-xs font-medium flex items-center gap-1.5 transition-colors border ${
@@ -309,26 +336,37 @@ export function QuestionRow({
       </div>
 
       {/* Hint panel */}
-      {showHint && question.hint && (
+      {showHint && canShowHint && (
         <div className="py-4 px-6 border-b border-border bg-muted/40">
           <div className="pl-4 border-l-2 border-amber-400 py-1">
-            <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-2 uppercase tracking-wider">
-              Hint
-            </h4>
-            <p className="text-sm text-foreground leading-relaxed">
-              {question.hint}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Hint
+              </h4>
+              <button
+                type="button"
+                onClick={copyHint}
+                className="inline-flex h-6 items-center gap-1.5 border border-border bg-card px-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <RiClipboardLine className="size-3" />
+                Copy
+              </button>
+            </div>
+            <HintContent
+              hint={question.hint ?? ""}
+              format={question.hintFormat}
+            />
           </div>
         </div>
       )}
 
       {/* Code panel */}
-      {showCode && question.codes.length > 0 && (
+      {showCode && canShowCode && (
         <div className="py-4 px-6 border-b border-border bg-muted/40">
-          <div className="flex bg-muted border border-border px-2 py-1.5 gap-1">
+          <div className="flex flex-wrap bg-muted border border-border px-2 py-1.5 gap-1">
             {question.codes.map((c, idx) => (
               <button
-                key={idx}
+                key={c.id}
                 onClick={() => setActiveTab(idx)}
                 className={`px-3 py-1 text-xs font-semibold transition-colors border ${
                   activeTab === idx
@@ -336,15 +374,11 @@ export function QuestionRow({
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border-transparent"
                 }`}
               >
-                {c.language}
+                {c.title || c.language || `Snippet ${idx + 1}`}
               </button>
             ))}
           </div>
-          <div className="bg-primary p-4 overflow-x-auto border border-t-0 border-border">
-            <pre className="text-sm text-primary-foreground font-mono leading-relaxed">
-              <code>{question.codes[activeTab].code}</code>
-            </pre>
-          </div>
+          {activeCode && <CodeViewer code={activeCode} />}
         </div>
       )}
     </>
